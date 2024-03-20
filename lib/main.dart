@@ -3,12 +3,23 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:intl/intl.dart';
 
-
-
 void main() => runApp(const MyApp());
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({Key? key}) : super(key: key);
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  ThemeMode _themeMode = ThemeMode.light;
+
+  void toggleTheme(bool isOn) {
+    setState(() {
+      _themeMode = isOn ? ThemeMode.dark : ThemeMode.light;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,22 +27,29 @@ class MyApp extends StatelessWidget {
       title: 'Crypto Trends',
       theme: ThemeData(
         primarySwatch: Colors.blue,
+        brightness: Brightness.light,
       ),
-      home: const CryptoDataScreen(),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+      ),
+      themeMode: _themeMode,
+      home: CryptoDataScreen(toggleTheme: toggleTheme),
     );
   }
 }
 
 class CryptoDataScreen extends StatefulWidget {
-  const CryptoDataScreen({Key? key}) : super(key: key);
+  final Function(bool) toggleTheme;
+
+  const CryptoDataScreen({Key? key, required this.toggleTheme}) : super(key: key);
 
   @override
-  _CryptoDataScreenState createState() => _CryptoDataScreenState();
+  State<CryptoDataScreen> createState() => _CryptoDataScreenState();
 }
 
 class _CryptoDataScreenState extends State<CryptoDataScreen> {
   late Future<List<CryptoCategory>> cryptoCategoriesFuture;
-  String lastRefreshed = "";
+  String lastRefreshed = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
 
   @override
   void initState() {
@@ -42,7 +60,7 @@ class _CryptoDataScreenState extends State<CryptoDataScreen> {
   Future<void> refreshData() async {
     setState(() {
       lastRefreshed = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
-      cryptoCategoriesFuture = fetchCryptoData();
+      cryptoCategoriesFuture = fetchCryptoData(forceRefresh: true);
     });
   }
 
@@ -103,11 +121,19 @@ class _CryptoDataScreenState extends State<CryptoDataScreen> {
     return categories;
   }
 
- @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Crypto Trends'),
+        actions: [
+          Switch(
+            value: Theme.of(context).brightness == Brightness.dark,
+            onChanged: (value) {
+              widget.toggleTheme(value);
+            },
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: refreshData,
