@@ -72,8 +72,8 @@ class _CryptoDataScreenState extends State<CryptoDataScreen> {
       if (data['retCode'] == 0) {
         final List<dynamic> items = data['result']['list'];
         final cryptoList = items.map((item) => CryptoData.fromJson(item))
-                                .where((item) => item.volume24h > 100000000) // Filter by volume
-                                .toList();
+            .where((item) => item.volume24h > 100000000) // Filter by volume
+            .toList();
         return categorizeAndSortCryptoData(cryptoList);
       } else {
         throw Exception('Failed to load data: ${data['retMsg']}');
@@ -84,30 +84,33 @@ class _CryptoDataScreenState extends State<CryptoDataScreen> {
   }
 
 
-
   List<CryptoCategory> categorizeAndSortCryptoData(List<CryptoData> data) {
+    // Sort allCoins list by price24hPcnt from highest to lowest
+    List<CryptoData> allCoins = List.from(data);
+    allCoins.sort((a, b) => b.price24hChange.compareTo(a.price24hChange));
+
+    // Initialize lists for different categories
     List<CryptoData> bullishDips = [];
     List<CryptoData> bearishRebounds = [];
     List<CryptoData> bullishTrends = [];
     List<CryptoData> bearishTrends = [];
-    List<CryptoData> allCoins = List.from(data);
 
-    for (var item in data) {
+    // Iterate through sorted allCoins list to categorize
+    for (var item in allCoins) {
       if (item.price24hChange > 0 && item.price1hChange > 0) {
         bullishTrends.add(item);
       } else if (item.price24hChange < 0 && item.price1hChange < 0) {
         bearishTrends.add(item);
-      }
-      if (item.price24hChange > 0 && item.price1hChange < 0) {
+      } else if (item.price24hChange > 0 && item.price1hChange < 0) {
         bullishDips.add(item);
       } else if (item.price24hChange < 0 && item.price1hChange > 0) {
         bearishRebounds.add(item);
       }
     }
 
-    // Sort each category according to the requirement
-    bullishTrends.sort((a, b) => b.price24hChange.compareTo(a.price24hChange));
+    // Sort bearishTrends list by price24hPcnt from most negative to least negative
     bearishTrends.sort((a, b) => a.price24hChange.compareTo(b.price24hChange));
+    bearishRebounds.sort((a, b) => a.price24hChange.compareTo(b.price24hChange));
 
     // Order categories according to the specified order
     List<CryptoCategory> categories = [
@@ -120,6 +123,8 @@ class _CryptoDataScreenState extends State<CryptoDataScreen> {
 
     return categories;
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -204,14 +209,14 @@ class CryptoCategoryCard extends StatelessWidget {
                   ],
                 ),
                 ...category.data.map((crypto) => TableRow(
-                      children: [
-                        Padding(padding: const EdgeInsets.all(8.0), child: SelectableText(crypto.symbol)),
-                        Padding(padding: const EdgeInsets.all(8.0), child: SelectableText('\$${crypto.lastPrice.toStringAsFixed(2)}')),
-                        Padding(padding: const EdgeInsets.all(8.0), child: SelectableText('${crypto.price24hChange.toStringAsFixed(2)}%')),
-                        Padding(padding: const EdgeInsets.all(8.0), child: SelectableText('${crypto.price1hChange.toStringAsFixed(2)}%')),
-                        Padding(padding: const EdgeInsets.all(8.0), child: SelectableText('\$${NumberFormat("#,##0", "en_US").format(crypto.volume24h)}')),
-                      ],
-                    )),
+                  children: [
+                    Padding(padding: const EdgeInsets.all(8.0), child: SelectableText(crypto.symbol)),
+                    Padding(padding: const EdgeInsets.all(8.0), child: SelectableText('\$${crypto.lastPrice.toStringAsFixed(2)}')),
+                    Padding(padding: const EdgeInsets.all(8.0), child: SelectableText('${crypto.price24hChange.toStringAsFixed(2)}%')),
+                    Padding(padding: const EdgeInsets.all(8.0), child: SelectableText('${crypto.price1hChange.toStringAsFixed(2)}%')),
+                    Padding(padding: const EdgeInsets.all(8.0), child: SelectableText('\$${NumberFormat("#,##0", "en_US").format(crypto.volume24h)}')),
+                  ],
+                )),
               ],
             ),
           ],
