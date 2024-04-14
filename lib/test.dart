@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:intl/intl.dart';
-import 'dart:async';
 
 void main() => runApp(const MyApp());
 
@@ -34,24 +33,15 @@ class _MyAppState extends State<MyApp> {
         brightness: Brightness.dark,
       ),
       themeMode: _themeMode,
-      home: CryptoDataScreen(
-        toggleTheme: toggleTheme,
-        themeMode: _themeMode, // Pass the theme mode to the child
-      ),
+      home: CryptoDataScreen(toggleTheme: toggleTheme),
     );
   }
 }
 
-
 class CryptoDataScreen extends StatefulWidget {
   final Function(bool) toggleTheme;
-  final ThemeMode themeMode; // Add this
 
-  const CryptoDataScreen({
-    Key? key, 
-    required this.toggleTheme, 
-    required this.themeMode, // Initialize this
-  }) : super(key: key);
+  const CryptoDataScreen({Key? key, required this.toggleTheme}) : super(key: key);
 
   @override
   State<CryptoDataScreen> createState() => _CryptoDataScreenState();
@@ -60,48 +50,11 @@ class CryptoDataScreen extends StatefulWidget {
 class _CryptoDataScreenState extends State<CryptoDataScreen> {
   late Future<List<CryptoCategory>> cryptoCategoriesFuture;
   String lastRefreshed = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
-  Timer? _timer;
-  double _progress = 0.0;
-  bool _autoRefreshEnabled = true; // Keep this
-  bool isDarkMode = false; // Add this to manage dark mode state locally
 
   @override
   void initState() {
     super.initState();
-    isDarkMode = widget.themeMode == ThemeMode.dark; // Initialize based on parent
     refreshData();
-    if (_autoRefreshEnabled) {
-      startTimer();
-    }
-  }
-
-  void startTimer() {
-    const oneSec = Duration(seconds: 1);
-    const maxSeconds = 300; // Refresh every minute
-    int currentSeconds = 0;
-    
-    _timer?.cancel(); // Cancel any existing timer to avoid multiple timers running
-    _timer = Timer.periodic(oneSec, (Timer timer) {
-      if (!_autoRefreshEnabled) {
-        timer.cancel();
-        return;
-      }
-      
-      setState(() {
-        currentSeconds++;
-        _progress = currentSeconds / maxSeconds;
-        if (currentSeconds >= maxSeconds) {
-          refreshData();
-          currentSeconds = 0;
-        }
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
   }
 
   Future<void> refreshData() async {
@@ -171,41 +124,22 @@ class _CryptoDataScreenState extends State<CryptoDataScreen> {
     return categories;
   }
 
-  
 
-@override
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Crypto Trends'),
-        actions: <Widget>[
-          // Toggle Dark Mode
-          IconButton(
-            icon: Icon(isDarkMode ? Icons.dark_mode : Icons.light_mode),
-            onPressed: () {
-              setState(() {
-                isDarkMode = !isDarkMode;
-                widget.toggleTheme(isDarkMode); // Use the callback to change the theme
-              });
-            },
-          ),
-          // Toggle Auto-Refresh
+        actions: [
           Switch(
-            value: _autoRefreshEnabled,
+            value: Theme.of(context).brightness == Brightness.dark,
             onChanged: (value) {
-              setState(() {
-                _autoRefreshEnabled = value;
-                if (value) {
-                  startTimer();
-                } else {
-                  _timer?.cancel();
-                }
-              });
+              widget.toggleTheme(value);
             },
           ),
         ],
       ),
-
       body: RefreshIndicator(
         onRefresh: refreshData,
         child: Column(
@@ -214,11 +148,6 @@ class _CryptoDataScreenState extends State<CryptoDataScreen> {
               padding: const EdgeInsets.all(8.0),
               child: Text("Last refreshed: $lastRefreshed"),
             ),
-          LinearProgressIndicator(
-            value: _progress, // Use the _progress value for the indicator
-            backgroundColor: Colors.grey[300],
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-        ),
             Expanded(
               child: FutureBuilder<List<CryptoCategory>>(
                 future: cryptoCategoriesFuture,
