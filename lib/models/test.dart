@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:intl/intl.dart';
+import 'dart:async';
 
 void main() => runApp(const MyApp());
 
@@ -33,15 +34,24 @@ class _MyAppState extends State<MyApp> {
         brightness: Brightness.dark,
       ),
       themeMode: _themeMode,
-      home: CryptoDataScreen(toggleTheme: toggleTheme),
+      home: CryptoDataScreen(
+        toggleTheme: toggleTheme,
+        themeMode: _themeMode, // Pass the theme mode to the child
+      ),
     );
   }
 }
 
+
 class CryptoDataScreen extends StatefulWidget {
   final Function(bool) toggleTheme;
+  final ThemeMode themeMode; // Add this
 
-  const CryptoDataScreen({Key? key, required this.toggleTheme}) : super(key: key);
+  const CryptoDataScreen({
+    Key? key,
+    required this.toggleTheme,
+    required this.themeMode, // Initialize this
+  }) : super(key: key);
 
   @override
   State<CryptoDataScreen> createState() => _CryptoDataScreenState();
@@ -50,11 +60,48 @@ class CryptoDataScreen extends StatefulWidget {
 class _CryptoDataScreenState extends State<CryptoDataScreen> {
   late Future<List<CryptoCategory>> cryptoCategoriesFuture;
   String lastRefreshed = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
+  Timer? _timer;
+  double _progress = 0.0;
+  bool _autoRefreshEnabled = true; // Keep this
+  bool isDarkMode = false; // Add this to manage dark mode state locally
 
   @override
   void initState() {
     super.initState();
+    isDarkMode = widget.themeMode == ThemeMode.dark; // Initialize based on parent
     refreshData();
+    if (_autoRefreshEnabled) {
+      startTimer();
+    }
+  }
+
+  void startTimer() {
+    const oneSec = Duration(seconds: 1);
+    const maxSeconds = 300; // Refresh every minute
+    int currentSeconds = 0;
+
+    _timer?.cancel(); // Cancel any existing timer to avoid multiple timers running
+    _timer = Timer.periodic(oneSec, (Timer timer) {
+      if (!_autoRefreshEnabled) {
+        timer.cancel();
+        return;
+      }
+
+      setState(() {
+        currentSeconds++;
+        _progress = currentSeconds / maxSeconds;
+        if (currentSeconds >= maxSeconds) {
+          refreshData();
+          currentSeconds = 0;
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   Future<void> refreshData() async {
@@ -84,30 +131,33 @@ class _CryptoDataScreenState extends State<CryptoDataScreen> {
   }
 
 
-
   List<CryptoCategory> categorizeAndSortCryptoData(List<CryptoData> data) {
+    // Sort allCoins list by price24hPcnt from highest to lowest
+    List<CryptoData> allCoins = List.from(data);
+    allCoins.sort((a, b) => b.price24hChange.compareTo(a.price24hChange));
+
+    // Initialize lists for different categories
     List<CryptoData> bullishDips = [];
     List<CryptoData> bearishRebounds = [];
     List<CryptoData> bullishTrends = [];
     List<CryptoData> bearishTrends = [];
-    List<CryptoData> allCoins = List.from(data);
 
-    for (var item in data) {
+    // Iterate through sorted allCoins list to categorize
+    for (var item in allCoins) {
       if (item.price24hChange > 0 && item.price1hChange > 0) {
         bullishTrends.add(item);
       } else if (item.price24hChange < 0 && item.price1hChange < 0) {
         bearishTrends.add(item);
-      }
-      if (item.price24hChange > 0 && item.price1hChange < 0) {
+      } else if (item.price24hChange > 0 && item.price1hChange < 0) {
         bullishDips.add(item);
       } else if (item.price24hChange < 0 && item.price1hChange > 0) {
         bearishRebounds.add(item);
       }
     }
 
-    // Sort each category according to the requirement
-    bullishTrends.sort((a, b) => b.price24hChange.compareTo(a.price24hChange));
+    // Sort bearishTrends list by price24hPcnt from most negative to least negative
     bearishTrends.sort((a, b) => a.price24hChange.compareTo(b.price24hChange));
+    bearishRebounds.sort((a, b) => a.price24hChange.compareTo(b.price24hChange));
 
     // Order categories according to the specified order
     List<CryptoCategory> categories = [
@@ -121,20 +171,41 @@ class _CryptoDataScreenState extends State<CryptoDataScreen> {
     return categories;
   }
 
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Crypto Trends'),
-        actions: [
+        actions: <Widget>[
+          // Toggle Dark Mode
+          IconButton(
+            icon: Icon(isDarkMode ? Icons.dark_mode : Icons.light_mode),
+            onPressed: () {
+              setState(() {
+                isDarkMode = !isDarkMode;
+                widget.toggleTheme(isDarkMode); // Use the callback to change the theme
+              });
+            },
+          ),
+          // Toggle Auto-Refresh
           Switch(
-            value: Theme.of(context).brightness == Brightness.dark,
+            value: _autoRefreshEnabled,
             onChanged: (value) {
-              widget.toggleTheme(value);
+              setState(() {
+                _autoRefreshEnabled = value;
+                if (value) {
+                  startTimer();
+                } else {
+                  _timer?.cancel();
+                }
+              });
             },
           ),
         ],
       ),
+
       body: RefreshIndicator(
         onRefresh: refreshData,
         child: Column(
@@ -142,6 +213,11 @@ class _CryptoDataScreenState extends State<CryptoDataScreen> {
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: Text("Last refreshed: $lastRefreshed"),
+            ),
+            LinearProgressIndicator(
+              value: _progress, // Use the _progress value for the indicator
+              backgroundColor: Colors.grey[300],
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
             ),
             Expanded(
               child: FutureBuilder<List<CryptoCategory>>(
@@ -264,3 +340,9 @@ class CryptoData {
   }
 
 }
+
+
+
+
+
+

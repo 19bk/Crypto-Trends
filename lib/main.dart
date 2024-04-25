@@ -48,8 +48,8 @@ class CryptoDataScreen extends StatefulWidget {
   final ThemeMode themeMode; // Add this
 
   const CryptoDataScreen({
-    Key? key, 
-    required this.toggleTheme, 
+    Key? key,
+    required this.toggleTheme,
     required this.themeMode, // Initialize this
   }) : super(key: key);
 
@@ -79,14 +79,14 @@ class _CryptoDataScreenState extends State<CryptoDataScreen> {
     const oneSec = Duration(seconds: 1);
     const maxSeconds = 300; // Refresh every minute
     int currentSeconds = 0;
-    
+
     _timer?.cancel(); // Cancel any existing timer to avoid multiple timers running
     _timer = Timer.periodic(oneSec, (Timer timer) {
       if (!_autoRefreshEnabled) {
         timer.cancel();
         return;
       }
-      
+
       setState(() {
         currentSeconds++;
         _progress = currentSeconds / maxSeconds;
@@ -171,9 +171,9 @@ class _CryptoDataScreenState extends State<CryptoDataScreen> {
     return categories;
   }
 
-  
 
-@override
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -214,11 +214,11 @@ class _CryptoDataScreenState extends State<CryptoDataScreen> {
               padding: const EdgeInsets.all(8.0),
               child: Text("Last refreshed: $lastRefreshed"),
             ),
-          LinearProgressIndicator(
-            value: _progress, // Use the _progress value for the indicator
-            backgroundColor: Colors.grey[300],
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-        ),
+            LinearProgressIndicator(
+              value: _progress, // Use the _progress value for the indicator
+              backgroundColor: Colors.grey[300],
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+            ),
             Expanded(
               child: FutureBuilder<List<CryptoCategory>>(
                 future: cryptoCategoriesFuture,
@@ -340,3 +340,4 @@ class CryptoData {
   }
 
 }
+
